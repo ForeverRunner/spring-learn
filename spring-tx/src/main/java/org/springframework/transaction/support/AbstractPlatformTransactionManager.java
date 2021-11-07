@@ -121,6 +121,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 	private boolean validateExistingTransaction = false;
 
+	//xxdtodo 部分事务失败是否全局回滚，同一个事务里面要么全部成功，要么全部失败
 	private boolean globalRollbackOnParticipationFailure = true;
 
 	private boolean failEarlyOnGlobalRollbackOnly = false;
@@ -358,7 +359,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 		if (definition.getTimeout() < TransactionDefinition.TIMEOUT_DEFAULT) {
 			throw new InvalidTimeoutException("Invalid transaction timeout", definition.getTimeout());
 		}
-
+		//xxdtodo 如果当前不存在事务，则抛出异常
 		// No existing transaction found -> check propagation behavior to find out how to proceed.
 		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_MANDATORY) {
 			throw new IllegalTransactionStateException(
@@ -367,14 +368,18 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 		else if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRED ||
 				definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW ||
 				definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
+			//没有事务需要挂起，不过TransactionSynchronization有可能需要挂起
+			//xxdtodo 挂起，suspendedResources代表当前线程被挂起的资源持有对象，
 			SuspendedResourcesHolder suspendedResources = suspend(null);
 			if (debugEnabled) {
 				logger.debug("Creating new transaction with name [" + definition.getName() + "]: " + definition);
 			}
 			try {
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
+				//开启事务后transaction中就会有连接对象，并且isTransactionActive为true
 				DefaultTransactionStatus status = newTransactionStatus(
 						definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
+				//xxdtodo 开启事务
 				doBegin(transaction, definition);
 				prepareSynchronization(status, definition);
 				return status;
